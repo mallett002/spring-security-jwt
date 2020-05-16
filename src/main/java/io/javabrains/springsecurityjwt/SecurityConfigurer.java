@@ -1,5 +1,6 @@
 package io.javabrains.springsecurityjwt;
 
+import io.javabrains.springsecurityjwt.filters.JwtRequestFilter;
 import io.javabrains.springsecurityjwt.services.MyUserDetailsService;
 import io.javabrains.springsecurityjwt.utils.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,13 +10,18 @@ import org.springframework.security.config.annotation.authentication.builders.Au
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @EnableWebSecurity
 public class SecurityConfigurer extends WebSecurityConfigurerAdapter {
     @Autowired
     private MyUserDetailsService myUserDetailsService;
+
+    @Autowired
+    private JwtRequestFilter jwtRequestFilter;
 
     @Override
     protected void configure(AuthenticationManagerBuilder auth) throws Exception {
@@ -28,7 +34,11 @@ public class SecurityConfigurer extends WebSecurityConfigurerAdapter {
         http.csrf().disable()
             .authorizeRequests().antMatchers("/authenticate").permitAll()
             .anyRequest()
-            .authenticated();
+            .authenticated()
+            .and().sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS); // No sessions. Force server to inspect each request for valid jwt
+
+        // make sure our jwtRequestFilter is called before UsernamePasswordAuthenticationFilter
+        http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
     }
 
     /* make an AuthenticationManager Instance, not included in spring boot */
